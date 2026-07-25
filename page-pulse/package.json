@@ -7,7 +7,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "postinstall": "npm run build",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only --exit-child src/server.ts",
