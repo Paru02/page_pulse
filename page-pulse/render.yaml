@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: page-pulse
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: LOG_LEVEL
+        value: info
+      - key: CORS_ORIGINS
+        value: '*'
+      - key: FETCH_TIMEOUT_MS
+        value: 8000
+      - key: FETCH_MAX_REDIRECTS
+        value: 5
+      - key: FETCH_MAX_CONTENT_BYTES
+        value: 5242880
+      - key: MAX_CONCURRENT_AUDITS
+        value: 10
+      - key: CHECK_BROKEN_LINKS
+        value: true
+      - key: MAX_LINKS_TO_CHECK
+        value: 15
+      - key: BROKEN_LINK_TIMEOUT_MS
+        value: 4000
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 30
+      - key: CACHE_TTL_SECONDS
+        value: 300
+      - key: REDIS_URL
+        sync: false # set manually in the Render dashboard if using a Redis add-on

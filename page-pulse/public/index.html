@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Page Pulse - URL Audit Tool</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2f3a;
+    --text: #e6e8eb;
+    --muted: #8b93a1;
+    --accent: #4f8cff;
+    --error: #ff5d5d;
+    --warning: #ffb84f;
+    --info: #4fc3ff;
+    --ok: #4fd18b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+  header { margin-bottom: 28px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  header p { color: var(--muted); margin: 0; font-size: 14px; }
+
+  form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  input[type="text"] {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 15px;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 0 22px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .options { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+  #status { margin: 12px 0; font-size: 14px; color: var(--muted); min-height: 20px; }
+  #status.error { color: var(--error); }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+  .metric { }
+  .metric .value { font-size: 22px; font-weight: 700; }
+  .metric .label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .field { margin-bottom: 12px; }
+  .field .k { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  .field .v { font-size: 14px; word-break: break-word; }
+  .v.muted { color: var(--muted); font-style: italic; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge.ok { background: rgba(79,209,139,0.15); color: var(--ok); }
+  .badge.err { background: rgba(255,93,93,0.15); color: var(--error); }
+
+  .issue {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .issue:last-child { border-bottom: none; }
+  .sev {
+    flex-shrink: 0;
+    width: 66px;
+    text-align: center;
+    height: 20px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 20px;
+  }
+  .sev.error { background: rgba(255,93,93,0.15); color: var(--error); }
+  .sev.warning { background: rgba(255,184,79,0.15); color: var(--warning); }
+  .sev.info { background: rgba(79,195,255,0.15); color: var(--info); }
+
+  .empty { color: var(--muted); font-size: 14px; font-style: italic; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 40px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔍 Page Pulse</h1>
+      <p>Enter a URL to run a live SEO &amp; structure audit.</p>
+    </header>
+
+    <form id="audit-form">
+      <input type="text" id="url-input" placeholder="https://example.com" autocomplete="off" required />
+      <button type="submit" id="submit-btn">Audit</button>
+    </form>
+    <label class="options">
+      <input type="checkbox" id="broken-links-checkbox" />
+      Check for broken links (slower)
+    </label>
+
+    <div id="status"></div>
+    <div id="results"></div>
+
+    <!-- <footer>Built for Digital Heroes Training Task</footer> -->
+  </div>
+
+<script>
+  const form = document.getElementById('audit-form');
+  const urlInput = document.getElementById('url-input');
+  const brokenLinksCheckbox = document.getElementById('broken-links-checkbox');
+  const submitBtn = document.getElementById('submit-btn');
+  const statusEl = document.getElementById('status');
+  const resultsEl = document.getElementById('results');
+
+  function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function field(label, value, isEmpty) {
+    return `<div class="field">
+      <div class="k">${esc(label)}</div>
+      <div class="v ${isEmpty ? 'muted' : ''}">${isEmpty ? '(not found)' : esc(value)}</div>
+    </div>`;
+  }
+
+  function renderResults(data) {
+    const issuesHtml = data.seoIssues.length
+      ? data.seoIssues.map(i => `
+          <div class="issue">
+            <span class="sev ${i.severity}">${esc(i.severity)}</span>
+            <span>${esc(i.message)}</span>
+          </div>`).join('')
+      : '<div class="empty">No SEO issues detected.</div>';
+
+    const brokenHtml = data.brokenLinks === null
+      ? '<div class="empty">Broken link checking was not enabled for this audit.</div>'
+      : data.brokenLinks.length
+        ? data.brokenLinks.map(l => `
+            <div class="issue">
+              <span class="sev error">${l.status ?? 'ERR'}</span>
+              <span>${esc(l.url)}${l.error ? ' — ' + esc(l.error) : ''}</span>
+            </div>`).join('')
+        : '<div class="empty">No broken links found among checked links.</div>';
+
+    resultsEl.innerHTML = `
+      <div class="card">
+        <h2>Overview</h2>
+        <div class="grid">
+          <div class="metric">
+            <div class="value">
+              <span class="badge ${data.httpStatus < 400 ? 'ok' : 'err'}">${data.httpStatus}</span>
+            </div>
+            <div class="label">HTTP Status</div>
+          </div>
+          <div class="metric">
+            <div class="value">${data.responseTimeMs} ms</div>
+            <div class="label">Response Time</div>
+          </div>
+          <div class="metric">
+            <div class="value">${(data.contentLengthBytes / 1024).toFixed(1)} KB</div>
+            <div class="label">Content Length</div>
+          </div>
+          <div class="metric">
+            <div class="value">${data.imageCount}</div>
+            <div class="label">Images</div>
+          </div>
+          <div class="metric">
+            <div class="value">${data.links.internal}</div>
+            <div class="label">Internal Links</div>
+          </div>
+          <div class="metric">
+            <div class="value">${data.links.external}</div>
+            <div class="label">External Links</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Page Metadata</h2>
+        ${field('Title', data.title, !data.title)}
+        ${field('Meta Description', data.metaDescription, !data.metaDescription)}
+        ${field('Canonical URL', data.canonicalUrl, !data.canonicalUrl)}
+        ${field('Final URL', data.finalUrl, false)}
+        ${field('Cache', data.cache.hit ? `Hit (TTL ${data.cache.ttlSeconds}s)` : 'Miss (freshly fetched)', false)}
+      </div>
+
+      <div class="card">
+        <h2>SEO Issues (${data.seoIssues.length})</h2>
+        ${issuesHtml}
+      </div>
+
+      <div class="card">
+        <h2>Broken Links</h2>
+        ${brokenHtml}
+      </div>
+    `;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const url = urlInput.value.trim();
+    if (!url) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Auditing...';
+    statusEl.textContent = 'Fetching and analyzing the page — this can take a few seconds...';
+    statusEl.className = '';
+    resultsEl.innerHTML = '';
+
+    try {
+      const res = await fetch('/api/v1/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, checkBrokenLinks: brokenLinksCheckbox.checked }),
+      });
+      const body = await res.json();
+
+      if (!res.ok || !body.success) {
+        statusEl.textContent = `Error: ${body?.error?.message || 'Something went wrong.'}`;
+        statusEl.className = 'error';
+        return;
+      }
+
+      statusEl.textContent = `Audit complete for ${body.data.requestedUrl}`;
+      renderResults(body.data);
+    } catch (err) {
+      statusEl.textContent = 'Network error: could not reach the Page Pulse API.';
+      statusEl.className = 'error';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Audit';
+    }
+  });
+</script>
+</body>
+</html>
