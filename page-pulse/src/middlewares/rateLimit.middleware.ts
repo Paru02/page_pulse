@@ -18,7 +18,7 @@ export const auditRateLimiter = rateLimit({
   standardHeaders: true, // adds RateLimit-* headers
   legacyHeaders: false,
   keyGenerator: (req: Request) => req.ip || 'unknown',
-  handler: (req: Request, _res: Response, next) => {
+  handler: (_req: Request, _res: Response, next) => {
     next(
       ApiError.tooManyRequests(
         `Rate limit exceeded. Maximum ${env.RATE_LIMIT_MAX_REQUESTS} requests per ${
