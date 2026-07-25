@@ -49,7 +49,7 @@ export function errorMiddleware(err: unknown, req: Request, res: Response, _next
       message,
       ...(isApiError && err.details !== undefined ? { details: err.details } : {}),
     },
-    requestId: req.id,
+    requestId: String(req.id),
     timestamp: new Date().toISOString(),
   };
 
